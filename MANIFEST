@@ -6,3 +6,5 @@ t/01glider.t
 t/02stoplight.t
 t/03block.t
 t/compare-boards.pl
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

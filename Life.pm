@@ -4,11 +4,16 @@ package Game::Life;
 
 #=============================================================================
 #
-# $Id: Life.pm,v 0.04 2001/07/04 02:49:29 mneylon Exp $
-# $Revision: 0.04 $
-# $Author: mneylon $
-# $Date: 2001/07/04 02:49:29 $
+# $Id: Life.pm,v 0.05 2013/05/17 21:18:26 ltp Exp $
+# $Revision: 0.05 $
+# $Author: ltp $
+# $Date: 2013/05/17 21:18:26 $
 # $Log: Life.pm,v $
+#
+# Revision 0.05  2013/05/17 21:18:29  ltp
+#
+# Modified constructor to allow arbitrary sized game board.
+#
 # Revision 0.04  2001/07/04 02:49:29  mneylon
 #
 # Fixed distribution problem
@@ -35,7 +40,7 @@ use Clone qw( clone );
 BEGIN {
     use Exporter   ();
     use vars       qw($VERSION @ISA @EXPORT %EXPORT_TAGS);
-    $VERSION     = sprintf( "%d.%02d", q($Revision: 0.04 $) =~ /\s(\d+)\.(\d+)/ );
+    $VERSION     = sprintf( "%d.%02d", q($Revision: 0.05 $) =~ /\s(\d+)\.(\d+)/ );
     @ISA         = qw(Exporter);
     @EXPORT      = qw();
     %EXPORT_TAGS = ( );
@@ -50,9 +55,16 @@ sub new {
     
     # No args, set up a blank one
     $self->{ size } = shift || $default_size;
+    if ( ref( $self->{ size } ) ) {
+      ( $self->{ size_y }, $self->{ size_x } ) = @{ $self->{ size } };
+    }
+    else {
+      $self->{ size_y } = $self->{ size_x } = $self->{ size }
+    }
+
     $self->{ grid } = [ map 
-			{ [ map { 0 } (1..$self->{ size } ) ] } 
-			(1..$self->{ size } ) ];
+			{ [ map { 0 } (1..$self->{ size_y } ) ] } 
+			(1..$self->{ size_x } ) ];
 
     bless $self, $class;
     
@@ -109,13 +121,13 @@ sub unset_point {
 
 sub place_points {
     my ( $self, $x, $y, $array ) = @_;
-    return if ( $x < 0 || $x >= $self->{ size } || 
-		$y < 0 || $y >= $self->{ size } );
+    return if ( $x < 0 || $x >= $self->{ size_x } || 
+		$y < 0 || $y >= $self->{ size_y } );
     my ($i, $j);
     my $array_x = @$array;
     my $array_y = @{$$array[0]};
-    for ( $i = 0 ; $i < $array_x && $i+$x < $self->{ size }; $i++ ) {
-	for ( $j = 0 ; $j < $array_y && $j+$y < $self->{ size }; $j++ ) {
+    for ( $i = 0 ; $i < $array_x && $i+$x < $self->{ size_x }; $i++ ) {
+	for ( $j = 0 ; $j < $array_y && $j+$y < $self->{ size_y }; $j++ ) {
 	    $self->{ grid }->[ $x + $i ]->[ $y + $j ] = 
 		($array->[ $i ]->[ $j ] > 0) ? 1 : 0;
 	}
@@ -125,13 +137,13 @@ sub place_points {
 
 sub place_text_points {
     my ( $self, $x, $y, $living, @array ) = @_;
-    return if ( $x < 0 || $x >= $self->{ size } || 
-		$y < 0 || $y >= $self->{ size } );
+    return if ( $x < 0 || $x >= $self->{ size_x } || 
+		$y < 0 || $y >= $self->{ size_y } );
     my ($i, $j);
     my $array_x = @array;
     my $array_y = length $array[0];
-    for ( $i = 0 ; $i < $array_x && $i+$x < $self->{ size }; $i++ ) {
-	for ( $j = 0 ; $j < $array_y && $j+$y < $self->{ size }; $j++ ) {
+    for ( $i = 0 ; $i < $array_x && $i+$x < $self->{ size_x }; $i++ ) {
+	for ( $j = 0 ; $j < $array_y && $j+$y < $self->{ size_y }; $j++ ) {
 	    $self->{ grid }->[ $x + $i ]->[ $y + $j ] = 
 		(substr($array[ $i ], $j, 1 ) eq $living) ? 1 : 0;
 	}
@@ -151,9 +163,9 @@ sub get_text_grid {
     $empty ||= '.';
 
     my @array;
-    for	my $i ( 0..$self->{ size }-1 ) {
+    for	my $i ( 0..$self->{ size_x }-1 ) {
 	my $string = '';
-	for my $j ( 0..$self->{ size }-1 ) {
+	for my $j ( 0..$self->{ size_y }-1 ) {
 	    $string .= $self->{ grid }->[ $i ]->[ $j ] ? $filled : $empty;
 	}
 	push @array, $string;
@@ -167,9 +179,10 @@ sub process {
     
     for (1..$times) {
 	my $new_grid = clone( $self->{ grid } );
+	use Data::Dumper;
 	
-	for	my $i ( 0..$self->{ size }-1 ) {
-	    for	my $j ( 0..$self->{ size }-1 ) {
+	for my $i ( 0..$self->{ size_x }-1 ) {
+	    for	my $j ( 0..$self->{ size_y }-1 ) {
 		$new_grid->[$i]->[$j] = 
 		    $self->_determine_life_status( $i, $j );
 	    }
@@ -183,8 +196,8 @@ sub _determine_life_status {
     my $n = 0;
     for my $i ( $x-1, $x, $x+1 ) {
 	for my $j ( $y-1, $y, $y+1 ) {
-	    $n++ if ( $i >= 0 && $i < $self->{ size } &&
-		      $j >= 0 && $j < $self->{ size } ) && 
+	    $n++ if ( $i >= 0 && $i < $self->{ size_x } &&
+		      $j >= 0 && $j < $self->{ size_y } ) && 
 			  ( $self->{ grid }->[ $i ]->[ $j ] );
 	}
     }
@@ -194,6 +207,8 @@ sub _determine_life_status {
 	$self->{ grid }->[ $x ]->[ $y ] 
 	    ? 'keep_criteria' : 'breed_criteria' } } );
 }
+
+42;
 
 __END__
 
@@ -255,13 +270,16 @@ reappears on the right side).
 =item C<new>
 
 Creates a new Life game board; if passed a scalar, the game board will
-be a square of that size, otherwise, it will be a default 100x100
-units.  Two optional array references may be passed to set the
-breeding and living rules for the Life game, respectively.  The arrays
-should be made of the values for the number of nearest neighbors that
-should trigger the associated event.  By default, Conway's game of
-life uses [ 3 ] and [ 2,3 ] for these arrays, respectively, but you
-can play around with these to get other types of automata.
+be a square of that size, if passed an array reference, the game board
+will be created as a rectangle with the width and height set to the
+first and second values in the array reference respectively, otherwise, 
+the board will be created using the default size of 100x100 units.  
+Two optional array references may be passed to set the breeding and 
+living rules for the Life game, respectively.  The arrays should be 
+made of the values for the number of nearest neighbors that should 
+trigger the associated event.  By default, Conway's game of life 
+uses [ 3 ] and [ 2,3 ] for these arrays, respectively, but you can play 
+around with these to get other types of automata.
 
 =item C<set_rules>
 
@@ -337,9 +355,10 @@ Martin Gardner (puzzle editor for I<Scientific American>) had for it.
 
 =head1 HISTORY
 
-    $Date: 2001/07/04 02:49:29 $
+    Revision 0.05  2013/05/17 21:18:26  ltp
 
-    $Log: Life.pm,v $
+    Updated constructor to allow arbitrary sized game board.
+
     Revision 0.04  2001/07/04 02:49:29  mneylon
 
     Fixed distribution problem
@@ -386,5 +405,3 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 =cut
-
-42;
